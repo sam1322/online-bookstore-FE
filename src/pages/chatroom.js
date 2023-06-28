@@ -16,59 +16,83 @@ const Chatroom = () => {
   const headers = {
     "ngrok-skip-browser-warning": "user",
   };
-  useEffect(() => {
+  // useEffect(() => {
+
+  const connect = () => {
     const client = new Client({
-      // brokerURL: "ws://localhost:8080/chat",
-      // brokerURL: "ws://localhost:8080/ws",
-      // webSocketFactory: () => new SockJS("http://localhost:8080/chat"),
-      webSocketFactory: () =>
-        new SockJS(chatUrl, null, {
-          transportOptions: {
-            "xhr-streaming": {
-              headers:headers,
-            },
-          },
-        }),
-      // new SockJS(chatUrl + "?ngrok-skip-browser-warning=any"),
-      connectHeaders: headers,
+      webSocketFactory: () => new SockJS(chatUrl),
       debug: (str) => console.log(str),
     });
-
     client.onConnect = () => {
       console.log("STOMP connection established.");
 
-      client.subscribe(
-        "/topic/chat",
-        (message) => {
-          const receivedMessage = JSON.parse(message.body);
-          console.log("hi", message, receivedMessage);
-          setMessages((prevMessages) => [...prevMessages, receivedMessage]);
-        },
-        headers
-      );
+      client.subscribe("/topic/chat", onMessageReceived, headers);
+      client.subscribe(`/user/${userName}/private`, onPrivateMessage, headers);
     };
 
     client.activate();
 
     setStompClient(client);
+  };
 
-    return () => {
-      if (client) {
-        client.deactivate();
-      }
-    };
-  }, []);
+  console.log("stompclient",stompClient)
 
-  const handleMessageSend = (e) => {
+  const onMessageReceived = (message) => {
+    const receivedMessage = JSON.parse(message.body);
+    console.log("hi", message, receivedMessage);
+    setMessages((prevMessages) => [...prevMessages, receivedMessage]);
+  };
+
+  const onPrivateMessage = (message) => {
+    const receivedMessage = JSON.parse(message.body);
+    console.log("hello this is private message", message, receivedMessage);
+    setMessages((prevMessages) => [...prevMessages, receivedMessage]);
+  };
+
+  // return () => {
+  //   if (client) {
+  //     client.deactivate();
+  //   }
+  // };
+  // }, []);
+
+  const sendMessage = (e) => {
     e.preventDefault();
-    if (stompClient && text.trim() !== "") {
+    if (stompClient && userName && text.trim() !== "") {
+      const chatMessage = {
+        senderName: userName,
+        // receiverName: "Chatroom",
+        message: text,
+      };
       stompClient.publish({
         destination: "/app/chatMessage",
-        body: JSON.stringify({ name: "Sam", content: text }),
-        // body: message,
+        body: JSON.stringify(chatMessage),
         headers: headers,
       });
       setText("");
+    }
+  };
+  const sendPrivateMessage = () => {
+    if (stompClient) {
+      var chatMessage = {
+        senderName: userName,
+        // receiverName: "chatroom",
+        receiverName: userName,
+        message: text,
+        // status: "MESSAGE",
+      };
+
+      // if (userData.username !== tab) {
+      //   privateChats.get(tab).push(chatMessage);
+      //   setPrivateChats(new Map(privateChats));
+      // }
+
+      stompClient.publish({
+        destination: "/app/private-message",
+        body: JSON.stringify(chatMessage),
+        headers: headers,
+      });
+      // setUserData({ ...userData, message: "" });
     }
   };
 
@@ -79,13 +103,13 @@ const Chatroom = () => {
   const registerUser = (e) => {
     e.preventDefault();
     if (userName == null || userName.trim() == "") return;
-    // if (user == null || user.trim() == "") return;
     setConnected(true);
+    connect();
   };
 
   return (
     <>
-      {connected || true ? (
+      {connected ? (
         <div className="bg-red-500 overflow-y-auto p-5 overflow-x-hidden fixed top-0 right-0 left-0 z-50 w-full md:inset-0 h-modal md:h-full">
           <div className="w-full flex h-[500px] bg-white rounded-md shadow-lg shadow-cyan-500/50 drop-shadow-xl">
             <div>
@@ -103,8 +127,15 @@ const Chatroom = () => {
               <InputBox
                 text={text}
                 setText={setText}
-                handleMessageSend={handleMessageSend}
+                handleMessageSend={sendMessage}
               />
+              <button
+                className="bg-blue-500 border border-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-r-md focus:outline-none"
+                onClick={sendPrivateMessage}
+              >
+                {" "}
+                Send Privately
+              </button>
             </div>
           </div>
         </div>

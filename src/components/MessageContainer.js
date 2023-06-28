@@ -7,7 +7,8 @@ const MessageContainer = (props) => {
     <div className="rounded-sm mb-1 h-[85%] w-full shadow drop-shadow-2xl overflow-auto">
       {messages.map((msg, index) => (
         <div key={index}>
-          {msg.content} by {msg.name} at {msg.createdTime}
+          {/* {msg.content} by {msg.name} at {msg.createdTime} */}
+          {msg.message} by {msg.senderName} at {msg.createdTime}
         </div>
       ))}
     </div>
