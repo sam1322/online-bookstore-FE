@@ -13,9 +13,16 @@ const Todo = () => {
 
   const getTodo = async () => {
     try {
+      axios.defaults.headers.common['ngrok-skip-browser-warning'] = "any value";
+
       const data = await axios
         // .get("api/v1/todo")
         .get(getTodoListURl)
+        // .get(getTodoListURl, {
+        //   headers: {
+        //     "ngrok-skip-browser-warning": true,
+        //   },
+        // })
         .then((res) => res.data);
       console.log("data", data);
       setTodoList(data);

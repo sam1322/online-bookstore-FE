@@ -3,6 +3,7 @@ import { Client } from "@stomp/stompjs";
 import SockJS from "sockjs-client";
 import InputBox from "@/components/Chat/inputBox";
 import MessageContainer from "@/components/MessageContainer";
+import { chatUrl } from "@/constants/path";
 
 const Chatroom = () => {
   const [text, setText] = useState("");
@@ -12,23 +13,39 @@ const Chatroom = () => {
   const [connected, setConnected] = useState(false);
 
   const userList = ["Chatroom", "Ram", "Shyam", "Mohan"];
-
+  const headers = {
+    "ngrok-skip-browser-warning": "user",
+  };
   useEffect(() => {
     const client = new Client({
       // brokerURL: "ws://localhost:8080/chat",
       // brokerURL: "ws://localhost:8080/ws",
-      webSocketFactory: () => new SockJS("http://localhost:8080/chat"),
+      // webSocketFactory: () => new SockJS("http://localhost:8080/chat"),
+      webSocketFactory: () =>
+        new SockJS(chatUrl, null, {
+          transportOptions: {
+            "xhr-streaming": {
+              headers:headers,
+            },
+          },
+        }),
+      // new SockJS(chatUrl + "?ngrok-skip-browser-warning=any"),
+      connectHeaders: headers,
       debug: (str) => console.log(str),
     });
 
     client.onConnect = () => {
       console.log("STOMP connection established.");
 
-      client.subscribe("/topic/chat", (message) => {
-        const receivedMessage = JSON.parse(message.body);
-        console.log("hi", message, receivedMessage);
-        setMessages((prevMessages) => [...prevMessages, receivedMessage]);
-      });
+      client.subscribe(
+        "/topic/chat",
+        (message) => {
+          const receivedMessage = JSON.parse(message.body);
+          console.log("hi", message, receivedMessage);
+          setMessages((prevMessages) => [...prevMessages, receivedMessage]);
+        },
+        headers
+      );
     };
 
     client.activate();
@@ -49,6 +66,7 @@ const Chatroom = () => {
         destination: "/app/chatMessage",
         body: JSON.stringify({ name: "Sam", content: text }),
         // body: message,
+        headers: headers,
       });
       setText("");
     }
@@ -81,7 +99,7 @@ const Chatroom = () => {
               ))}
             </div>
             <div className="w-full">
-              <MessageContainer messages={messages}/>
+              <MessageContainer messages={messages} />
               <InputBox
                 text={text}
                 setText={setText}
